@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     const maintenance = await Maintenance.create({
       ...parsed.data,
       status: "in_progress",
-      createdBy: user._id,
+      createdBy: user.userId,
     });
 
     vehicle.status = "in_shop";

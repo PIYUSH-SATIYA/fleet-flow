@@ -15,7 +15,7 @@ export interface IExpenseDocument extends Document {
   date: Date;
   description?: string;
   receiptUrl?: string;
-  createdBy?: mongoose.Types.ObjectId;
+  createdBy?: string; // Clerk user ID
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,7 +55,7 @@ const ExpenseSchema = new Schema<IExpenseDocument>(
     },
     description: { type: String, trim: true },
     receiptUrl: String,
-    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    createdBy: { type: String }, // Clerk user ID
   },
   { timestamps: true }
 );

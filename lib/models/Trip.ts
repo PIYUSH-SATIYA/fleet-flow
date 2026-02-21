@@ -20,7 +20,7 @@ export interface ITripDocument extends Document {
   scheduledDate?: Date;
   completedDate?: Date;
   notes?: string;
-  createdBy?: mongoose.Types.ObjectId;
+  createdBy?: string; // Clerk user ID
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,7 +68,7 @@ const TripSchema = new Schema<ITripDocument>(
     scheduledDate: Date,
     completedDate: Date,
     notes: { type: String, trim: true },
-    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    createdBy: { type: String }, // Clerk user ID
   },
   { timestamps: true }
 );

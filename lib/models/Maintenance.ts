@@ -15,7 +15,7 @@ export interface IMaintenanceDocument extends Document {
   completedDate?: Date;
   status: MaintenanceStatus;
   vendor?: string;
-  createdBy?: mongoose.Types.ObjectId;
+  createdBy?: string; // Clerk user ID
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,7 +57,7 @@ const MaintenanceSchema = new Schema<IMaintenanceDocument>(
       default: "in_progress",
     },
     vendor: { type: String, trim: true },
-    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    createdBy: { type: String }, // Clerk user ID
   },
   { timestamps: true }
 );

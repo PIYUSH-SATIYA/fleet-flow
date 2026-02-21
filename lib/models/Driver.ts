@@ -17,7 +17,7 @@ export interface IDriverDocument extends Document {
   safetyScore: number;
   totalTripsCompleted: number;
   avatarUrl?: string;
-  createdBy?: mongoose.Types.ObjectId;
+  createdBy?: string; // Clerk user ID
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,7 +74,7 @@ const DriverSchema = new Schema<IDriverDocument>(
       min: 0,
     },
     avatarUrl: String,
-    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    createdBy: { type: String }, // Clerk user ID
   },
   { timestamps: true }
 );

@@ -13,7 +13,7 @@ export const createExpenseSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
   fuelLiters: z.number().positive().optional(),
   fuelPricePerLiter: z.number().positive().optional(),
-  date: z.string().min(1, "Date is required"),
+  date: z.coerce.date({ message: "Date is required" }),
   description: z.string().trim().optional(),
   receiptUrl: z.string().url().optional(),
 });

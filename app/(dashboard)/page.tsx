@@ -21,7 +21,7 @@ export default function CommandCenterPage() {
   if (loading) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-6">Command Center</h1>
+        <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -81,7 +81,7 @@ export default function CommandCenterPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Command Center</h1>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">Fleet overview at a glance</p>
         </div>
         <Badge variant="outline" className="text-xs">Live</Badge>
