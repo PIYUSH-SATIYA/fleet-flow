@@ -49,7 +49,10 @@ export default function DashboardLayout({
             appearance={{
               elements: {
                 rootBox: "w-full",
-                organizationSwitcherTrigger: "w-full justify-start text-sm text-muted-foreground hover:text-foreground",
+                organizationSwitcherTrigger: "w-full justify-start text-sm text-foreground hover:bg-muted border border-border rounded-md px-2.5 py-2",
+                organizationPreviewMainIdentifier: "text-foreground font-medium",
+                organizationPreviewSecondaryIdentifier: "text-muted-foreground",
+                organizationSwitcherPopoverCard: "bg-card border border-border text-foreground",
               },
             }}
           />

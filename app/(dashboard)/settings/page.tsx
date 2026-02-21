@@ -1,6 +1,7 @@
 "use client";
 
 import { OrganizationProfile, useOrganization } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 import { Building2 } from "lucide-react";
 
 // ============================================================
@@ -60,6 +61,7 @@ export default function SettingsPage() {
         <OrganizationProfile
           routing="hash"
           appearance={{
+            baseTheme: dark,
             elements: {
               rootBox: "w-full",
               cardBox: "w-full max-w-none shadow-none",
@@ -69,11 +71,13 @@ export default function SettingsPage() {
                 "text-muted-foreground hover:text-foreground hover:bg-muted",
               navbarButtonActive: "text-primary bg-primary/10",
               pageScrollBox: "bg-card",
+              page: "bg-card text-foreground",
               headerTitle: "text-foreground",
               headerSubtitle: "text-muted-foreground",
               profileSectionTitle: "text-foreground",
               profileSectionContent: "text-muted-foreground",
               tableHead: "text-muted-foreground",
+              tableCell: "text-foreground",
               userPreviewMainIdentifier: "text-foreground",
               userPreviewSecondaryIdentifier: "text-muted-foreground",
               formButtonPrimary:
@@ -82,6 +86,7 @@ export default function SettingsPage() {
               badge: "bg-primary/10 text-primary",
               formFieldInput:
                 "bg-background border-border text-foreground focus:ring-primary",
+              formFieldSelect: "bg-background border-border text-foreground focus:ring-primary",
               formFieldLabel: "text-foreground",
               membersPageInviteButton:
                 "bg-primary text-primary-foreground hover:bg-primary/90",
