@@ -1,0 +1,509 @@
+# FleetFlow — API Testing Reference
+
+Base URL: `http://localhost:3000`
+
+> **Auth Note:** All endpoints except webhooks require a valid Clerk session. When testing from the browser or Postman while signed in, the session cookie is forwarded automatically. If testing with `curl`, you need to grab the `__session` cookie from your browser DevTools and pass it as `-H "Cookie: __session=<value>"`.
+
+---
+
+## Test in This Order
+
+Resources have dependencies: Vehicles and Drivers must exist before Trips. Trips must exist before Expenses that reference a Trip.
+
+```
+1. Vehicles → 2. Drivers → 3. Trips → 4. Maintenance → 5. Expenses → 6. Analytics
+```
+
+---
+
+## 1. Vehicles
+
+### Create a Vehicle
+
+```bash
+curl -X POST http://localhost:3000/api/vehicles \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Truck Alpha",
+    "model": "Tata 407",
+    "licensePlate": "MH12AB1234",
+    "type": "truck",
+    "maxCapacity": 5000,
+    "currentOdometer": 12000,
+    "region": "Mumbai",
+    "acquisitionCost": 1500000,
+    "acquisitionDate": "2024-01-15T00:00:00.000Z"
+  }'
+```
+
+**Expected 201:**
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "65f...",
+    "name": "Truck Alpha",
+    "licensePlate": "MH12AB1234",
+    "status": "available",
+    ...
+  },
+  "message": "Vehicle created successfully"
+}
+```
+
+**Test: Duplicate license plate → 409**
+```bash
+# Same request again — should fail
+```
+```json
+{ "success": false, "error": "A vehicle with this license plate already exists" }
+```
+
+**Test: Missing required field → 400**
+```bash
+curl -X POST http://localhost:3000/api/vehicles \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "No Model" }'
+```
+```json
+{
+  "success": false,
+  "error": "Validation failed",
+  "details": {
+    "model": ["Required"],
+    "licensePlate": ["Required"],
+    "type": ["Required"],
+    "maxCapacity": ["Required"]
+  }
+}
+```
+
+---
+
+### List Vehicles
+
+```bash
+# All vehicles
+curl http://localhost:3000/api/vehicles
+
+# Filter by status
+curl "http://localhost:3000/api/vehicles?status=available"
+
+# Paginate
+curl "http://localhost:3000/api/vehicles?page=2&limit=10"
+
+# Search
+curl "http://localhost:3000/api/vehicles?search=tata"
+```
+
+**Expected 200:**
+```json
+{
+  "success": true,
+  "data": [ { ... } ],
+  "total": 5,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 1
+}
+```
+
+---
+
+### Get Single Vehicle
+
+```bash
+curl http://localhost:3000/api/vehicles/<vehicleId>
+```
+
+**Test: Non-existent ID → 404**
+```json
+{ "success": false, "error": "Vehicle not found" }
+```
+
+---
+
+### Update Vehicle
+
+```bash
+curl -X PUT http://localhost:3000/api/vehicles/<vehicleId> \
+  -H "Content-Type: application/json" \
+  -d '{ "region": "Pune", "currentOdometer": 13500 }'
+```
+
+**Expected 200:**
+```json
+{ "success": true, "data": { "region": "Pune", ... }, "message": "Vehicle updated successfully" }
+```
+
+---
+
+### Retire Vehicle (DELETE)
+
+```bash
+curl -X DELETE http://localhost:3000/api/vehicles/<vehicleId>
+```
+
+**Expected 200:**
+```json
+{ "success": true, "data": { "status": "retired", ... }, "message": "Vehicle retired successfully" }
+```
+
+**Test: Retire vehicle on_trip → 400**
+```json
+{ "success": false, "error": "Cannot retire a vehicle that is currently on a trip" }
+```
+
+---
+
+## 2. Drivers
+
+### Create a Driver
+
+```bash
+curl -X POST http://localhost:3000/api/drivers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Ravi Kumar",
+    "email": "ravi@example.com",
+    "phone": "+91-9876543210",
+    "licenseNumber": "MH0120220012345",
+    "licenseCategory": ["truck", "van"],
+    "licenseExpiry": "2027-06-30",
+    "safetyScore": 88
+  }'
+```
+
+**Expected 201:**
+```json
+{
+  "success": true,
+  "data": { "_id": "...", "name": "Ravi Kumar", "status": "available", ... },
+  "message": "Driver created successfully"
+}
+```
+
+**Test: Expired license (still creates — expiry is checked at trip dispatch, not creation)**
+
+**Test: Duplicate email → 409**
+```json
+{ "success": false, "error": "A driver with this email or license number already exists" }
+```
+
+---
+
+### List & Filter Drivers
+
+```bash
+# Filter by status
+curl "http://localhost:3000/api/drivers?status=available"
+
+# Filter by licenseCategory
+curl "http://localhost:3000/api/drivers?licenseCategory=truck"
+
+# Search
+curl "http://localhost:3000/api/drivers?search=ravi"
+```
+
+---
+
+### Update & Suspend
+
+```bash
+# Update safety score
+curl -X PUT http://localhost:3000/api/drivers/<driverId> \
+  -H "Content-Type: application/json" \
+  -d '{ "safetyScore": 92, "status": "off_duty" }'
+
+# Suspend driver
+curl -X DELETE http://localhost:3000/api/drivers/<driverId>
+```
+
+---
+
+## 3. Trips
+
+### Create a Trip (Happy Path)
+
+> Requires an **available** vehicle and an **available** driver whose `licenseCategory` includes the vehicle's `type`.
+
+```bash
+curl -X POST http://localhost:3000/api/trips \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vehicle": "<vehicleId>",
+    "driver": "<driverId>",
+    "origin": "Mumbai Warehouse",
+    "destination": "Pune Distribution Center",
+    "cargoDescription": "Electronics",
+    "cargoWeight": 1200,
+    "scheduledDate": "2026-02-22T08:00:00.000Z",
+    "notes": "Handle with care"
+  }'
+```
+
+**Expected 201:**
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "...",
+    "tripNumber": "TRP-001",
+    "status": "dispatched",
+    "vehicle": { "name": "Truck Alpha", "licensePlate": "MH12AB1234", ... },
+    "driver": { "name": "Ravi Kumar", ... },
+    ...
+  },
+  "message": "Trip created and dispatched successfully"
+}
+```
+
+**Side effects to verify:**
+- Vehicle `status` should now be `on_trip`
+- Driver `status` should now be `on_trip`
+
+---
+
+### Business Rule Failure Tests
+
+```bash
+# 1. Vehicle not available (already on_trip)
+# → 400: Vehicle "Truck Alpha" is not available (current status: on_trip)
+
+# 2. Driver not available
+# → 400: Driver "Ravi Kumar" is not available (current status: on_trip)
+
+# 3. Expired license — create driver with past expiry date, then try dispatch
+# → 400: Driver "X"'s license has expired (2023-01-01)
+
+# 4. Wrong license category — truck vehicle + van-only driver
+# → 400: Driver "X" is not licensed to drive a truck (licensed for: van)
+
+# 5. Cargo overweight
+curl -X POST http://localhost:3000/api/trips \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vehicle": "<vehicleId>",
+    "driver": "<driverId>",
+    "origin": "A",
+    "destination": "B",
+    "cargoWeight": 99999
+  }'
+# → 400: Cargo weight (99999kg) exceeds vehicle max capacity (5000kg)
+```
+
+---
+
+### Trip Status Transitions
+
+```bash
+# dispatched → in_transit
+curl -X PUT http://localhost:3000/api/trips/<tripId> \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "in_transit" }'
+
+# in_transit → completed (endOdometer required)
+curl -X PUT http://localhost:3000/api/trips/<tripId> \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "completed", "endOdometer": 13450 }'
+```
+
+**Expected on complete:**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "completed",
+    "distanceCovered": 1450,
+    "completedDate": "2026-02-21T...",
+    ...
+  },
+  "message": "Trip completed successfully"
+}
+```
+
+**Side effects to verify:**
+- Vehicle `status` → `available`, `currentOdometer` → `13450`
+- Driver `status` → `available`, `totalTripsCompleted` incremented
+
+```bash
+# Complete without endOdometer → 400
+curl -X PUT http://localhost:3000/api/trips/<tripId> \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "completed" }'
+# → 400: End odometer reading is required to complete a trip
+
+# Cancel a completed trip → 400
+curl -X PUT http://localhost:3000/api/trips/<completedTripId> \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "cancelled" }'
+# → 400: Cannot cancel a completed trip
+```
+
+---
+
+## 4. Maintenance
+
+### Create Service Log
+
+```bash
+curl -X POST http://localhost:3000/api/maintenance \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vehicle": "<vehicleId>",
+    "serviceType": "oil_change",
+    "description": "Regular 10k km service",
+    "cost": 3500,
+    "odometerAtService": 30000,
+    "serviceDate": "2026-02-21",
+    "vendor": "Reliance Auto Care"
+  }'
+```
+
+**Expected 201:**
+```json
+{
+  "success": true,
+  "data": { "status": "in_progress", ... },
+  "message": "Service log created — vehicle moved to In Shop"
+}
+```
+
+**Side effects:** Vehicle `status` → `in_shop`
+
+**Test: Service vehicle on_trip → 400**
+```json
+{ "success": false, "error": "Cannot create a service log for a vehicle that is currently on a trip" }
+```
+
+---
+
+### Complete Service
+
+```bash
+curl -X PUT http://localhost:3000/api/maintenance/<maintenanceId> \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "completed",
+    "cost": 4200,
+    "completedDate": "2026-02-22"
+  }'
+```
+
+**Expected:** Vehicle `status` → `available`
+
+---
+
+### Valid `serviceType` values
+
+`oil_change` | `tire_replacement` | `brake_service` | `engine_repair` | `inspection` | `other`
+
+---
+
+## 5. Expenses
+
+### Log an Expense
+
+```bash
+curl -X POST http://localhost:3000/api/expenses \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vehicle": "<vehicleId>",
+    "trip": "<tripId>",
+    "type": "fuel",
+    "amount": 4500,
+    "fuelLiters": 60,
+    "fuelPricePerLiter": 75,
+    "date": "2026-02-21",
+    "description": "Fuel fill at HP Pump, Nashik"
+  }'
+```
+
+**Valid `type` values:** `fuel` | `toll` | `parking` | `fine` | `other`
+
+> `trip` is optional — expense can be vehicle-only (not tied to a trip).
+> `fuelLiters` and `fuelPricePerLiter` are only relevant for `type: "fuel"`.
+
+---
+
+### List with Filters
+
+```bash
+# All fuel expenses
+curl "http://localhost:3000/api/expenses?type=fuel"
+
+# For a specific vehicle
+curl "http://localhost:3000/api/expenses?vehicle=<vehicleId>"
+
+# Date range
+curl "http://localhost:3000/api/expenses?dateFrom=2026-01-01&dateTo=2026-02-28"
+```
+
+---
+
+## 6. Analytics
+
+```bash
+# Dashboard KPIs
+curl "http://localhost:3000/api/analytics?report=dashboard"
+
+# Fleet financial summary
+curl "http://localhost:3000/api/analytics?report=fleet-summary"
+
+# Per-vehicle breakdown
+curl "http://localhost:3000/api/analytics?report=vehicle&vehicleId=<vehicleId>"
+
+# Invalid report type → 400
+curl "http://localhost:3000/api/analytics?report=foo"
+# → 400: Invalid report type
+```
+
+---
+
+## Auth & Permission Error Tests
+
+```bash
+# 1. Not signed in → 401
+# Sign out and hit any protected route
+# → { "success": false, "error": "Unauthorized — please sign in" }
+
+# 2. Wrong permission → 403
+# Sign in as finance_analyst and try to create a vehicle
+# → { "success": false, "error": "Forbidden — requires permission: org:vehicle:manage" }
+
+# 3. User not in DB (webhook not processed) → 404
+# → { "success": false, "error": "User not found — please complete onboarding" }
+```
+
+---
+
+## Validation Error Shape (All POST/PUT)
+
+When the request body fails Zod validation, you get:
+
+```json
+{
+  "success": false,
+  "error": "Validation failed",
+  "details": {
+    "fieldName": ["Error message"],
+    "anotherField": ["Error message"]
+  }
+}
+```
+
+Map `details[fieldName][0]` to inline form errors in your UI.
+
+---
+
+## Webhook Test (Clerk → MongoDB Sync)
+
+> This is called by Clerk, not manually in production. For local dev, use [ngrok](https://ngrok.com/) or [Clerk's local webhook testing](https://clerk.com/docs/webhooks/overview).
+
+```bash
+# The endpoint is public — no auth required
+POST http://localhost:3000/api/webhooks/clerk
+# With Svix signature headers from Clerk dashboard
+```
+
+Events handled: `user.created`, `user.updated`, `user.deleted`
