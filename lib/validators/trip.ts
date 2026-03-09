@@ -12,7 +12,7 @@ export const createTripSchema = z.object({
   cargoDescription: z.string().trim().optional(),
   cargoWeight: z.number().positive("Cargo weight must be positive"),
   startOdometer: z.number().min(0).optional(),
-  scheduledDate: z.string().optional(),
+  scheduledDate: z.coerce.date().optional(),
   notes: z.string().trim().optional(),
 });
 
@@ -21,7 +21,7 @@ export const updateTripSchema = z.object({
     .enum(["draft", "dispatched", "in_transit", "completed", "cancelled"])
     .optional(),
   endOdometer: z.number().min(0).optional(),
-  completedDate: z.string().optional(),
+  completedDate: z.coerce.date().optional(),
   notes: z.string().trim().optional(),
 });
 

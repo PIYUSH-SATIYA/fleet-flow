@@ -15,7 +15,7 @@ export const createVehicleSchema = z.object({
   currentOdometer: z.number().min(0).optional(),
   region: z.string().trim().optional(),
   acquisitionCost: z.number().min(0).optional(),
-  acquisitionDate: z.string().datetime().optional(),
+  acquisitionDate: z.coerce.date().optional(),
 });
 
 export const updateVehicleSchema = createVehicleSchema.partial().extend({

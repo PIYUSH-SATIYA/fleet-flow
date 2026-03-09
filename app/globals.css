@@ -64,6 +64,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Native select dropdown readability in dark UI */
+select {
+  color: var(--foreground);
+  background-color: transparent;
+}
+
+select option,
+select optgroup {
+  color: var(--foreground);
+  background-color: var(--card);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

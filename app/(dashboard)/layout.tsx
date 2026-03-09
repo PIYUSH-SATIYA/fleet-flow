@@ -5,17 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import {
-  LayoutDashboard, Truck, MapPin, Users, Wrench, Receipt, BarChart3,
+  LayoutDashboard, Truck, MapPin, Users, Wrench, Receipt, BarChart3, Settings,
 } from "lucide-react";
 
 const navItems = [
-  { name: "Command Center", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Vehicles", href: "/vehicles", icon: Truck },
   { name: "Trips", href: "/trips", icon: MapPin },
   { name: "Drivers", href: "/drivers", icon: Users },
   { name: "Maintenance", href: "/maintenance", icon: Wrench },
   { name: "Expenses", href: "/expenses", icon: Receipt },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export default function DashboardLayout({
@@ -48,7 +49,10 @@ export default function DashboardLayout({
             appearance={{
               elements: {
                 rootBox: "w-full",
-                organizationSwitcherTrigger: "w-full justify-start text-sm text-muted-foreground hover:text-foreground",
+                organizationSwitcherTrigger: "w-full justify-start text-sm text-foreground hover:bg-muted border border-border rounded-md px-2.5 py-2",
+                organizationPreviewMainIdentifier: "text-foreground font-medium",
+                organizationPreviewSecondaryIdentifier: "text-muted-foreground",
+                organizationSwitcherPopoverCard: "bg-card border border-border text-foreground",
               },
             }}
           />

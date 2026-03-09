@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       ...parsed.data,
       status: "dispatched",
       startOdometer: parsed.data.startOdometer ?? vehicle.currentOdometer,
-      createdBy: user._id,
+      createdBy: user.userId,
     });
 
     await Promise.all([

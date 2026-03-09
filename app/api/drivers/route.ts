@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
 
     const driver = await Driver.create({
       ...parsed.data,
-      createdBy: user._id,
+      createdBy: user.userId,
     });
 
     return successResponse(driver, "Driver created successfully", 201);

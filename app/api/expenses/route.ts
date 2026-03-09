@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     const expense = await Expense.create({
       ...parsed.data,
-      createdBy: user._id,
+      createdBy: user.userId,
     });
 
     const populated = await Expense.findById(expense._id)

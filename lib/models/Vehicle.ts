@@ -17,7 +17,7 @@ export interface IVehicleDocument {
   acquisitionCost: number;
   acquisitionDate?: Date;
   imageUrl?: string;
-  createdBy?: mongoose.Types.ObjectId;
+  createdBy?: string; // Clerk user ID
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,7 +69,7 @@ const VehicleSchema = new Schema<IVehicleDocument>(
     },
     acquisitionDate: Date,
     imageUrl: String,
-    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    createdBy: { type: String }, // Clerk user ID (e.g. "user_abc123")
   },
   { timestamps: true }
 );

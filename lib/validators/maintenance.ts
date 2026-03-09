@@ -13,7 +13,7 @@ export const createMaintenanceSchema = z.object({
   description: z.string().trim().optional(),
   cost: z.number().min(0, "Cost cannot be negative"),
   odometerAtService: z.number().min(0).optional(),
-  serviceDate: z.string().min(1, "Service date is required"),
+  serviceDate: z.coerce.date({ message: "Service date is required" }),
   vendor: z.string().trim().optional(),
 });
 
@@ -21,7 +21,7 @@ export const updateMaintenanceSchema = z.object({
   description: z.string().trim().optional(),
   cost: z.number().min(0).optional(),
   status: z.enum(["scheduled", "in_progress", "completed"]).optional(),
-  completedDate: z.string().optional(),
+  completedDate: z.coerce.date().optional(),
   vendor: z.string().trim().optional(),
 });
 

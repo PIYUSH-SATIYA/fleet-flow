@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     const vehicle = await Vehicle.create({
       ...parsed.data,
-      createdBy: user._id,
+      createdBy: user.userId,
     });
 
     return successResponse(vehicle, "Vehicle created successfully", 201);

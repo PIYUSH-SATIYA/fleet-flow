@@ -1,7 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest } from "next/server";
-import connectDB from "@/lib/db";
-import User, { IUserDocument } from "@/lib/models/User";
 import { errorResponse } from "@/lib/utils/api-response";
 
 // ============================================================
@@ -9,10 +7,12 @@ import { errorResponse } from "@/lib/utils/api-response";
 // ============================================================
 //
 // All role/permission checks use Clerk's `auth().has()` which
-// reads directly from the org membership — no DB round-trip needed
-// for access control decisions.
+// reads directly from the org membership — no DB round-trip needed.
 //
-// Custom permissions created in Clerk Dashboard:
+// We are SOLELY relying on Clerk for identity and access control.
+// No MongoDB User lookup is performed here.
+//
+// Custom permissions configured in Clerk Dashboard:
 //   org:vehicle:manage   org:vehicle:view
 //   org:driver:manage    org:driver:view
 //   org:trip:manage      org:trip:view
@@ -34,15 +34,15 @@ export type ClerkPermission =
   | "org:expense:view"
   | "org:analytics:view";
 
-// ─── Internal helper ────────────────────────────────────────
-
 /**
- * Resolves the authenticated Clerk user to a MongoDB User document.
- * Returns null if unauthenticated or user document not found.
+ * Lightweight Clerk user identity — passed to route handlers.
+ * Solely derived from Clerk session; no DB lookup required.
  */
-async function resolveUser(userId: string): Promise<IUserDocument | null> {
-  await connectDB();
-  return User.findOne({ clerkId: userId });
+export interface ClerkUser {
+  /** Clerk's user ID (e.g. "user_2abc...") */
+  userId: string;
+  /** Active org ID from Clerk session, if any */
+  orgId: string | null;
 }
 
 // ─── Public helpers ─────────────────────────────────────────
@@ -59,27 +59,22 @@ async function resolveUser(userId: string): Promise<IUserDocument | null> {
 export async function withPermission(
   _req: NextRequest,
   permission: ClerkPermission,
-  handler: (user: IUserDocument) => Promise<Response>
+  handler: (user: ClerkUser) => Promise<Response>
 ): Promise<Response> {
   try {
     const session = await auth();
-    const { userId, has } = session;
+    const { userId, orgId, has } = session;
 
     if (!userId) {
       return errorResponse("Unauthorized — please sign in", 401);
     }
 
-    // Clerk org permission check (no DB needed for this guard)
+    // Clerk org permission check (reads from session JWT — no DB needed)
     if (!has({ permission })) {
       return errorResponse(`Forbidden — requires permission: ${permission}`, 403);
     }
 
-    const user = await resolveUser(userId);
-    if (!user) {
-      return errorResponse("User not found — please complete onboarding", 404);
-    }
-
-    return handler(user);
+    return handler({ userId, orgId: orgId ?? null });
   } catch (error) {
     console.error("[Auth Error]", error);
     return errorResponse("Internal server error", 500);
@@ -95,11 +90,11 @@ export async function withPermission(
 export async function withAnyPermission(
   _req: NextRequest,
   permissions: ClerkPermission[],
-  handler: (user: IUserDocument) => Promise<Response>
+  handler: (user: ClerkUser) => Promise<Response>
 ): Promise<Response> {
   try {
     const session = await auth();
-    const { userId, has } = session;
+    const { userId, orgId, has } = session;
 
     if (!userId) {
       return errorResponse("Unauthorized — please sign in", 401);
@@ -113,12 +108,7 @@ export async function withAnyPermission(
       );
     }
 
-    const user = await resolveUser(userId);
-    if (!user) {
-      return errorResponse("User not found — please complete onboarding", 404);
-    }
-
-    return handler(user);
+    return handler({ userId, orgId: orgId ?? null });
   } catch (error) {
     console.error("[Auth Error]", error);
     return errorResponse("Internal server error", 500);
@@ -126,28 +116,22 @@ export async function withAnyPermission(
 }
 
 /**
- * Lightweight auth check — just ensures the user is authenticated
- * and exists in our DB. No permission check.
- *
- * Use for endpoints accessible by ALL authenticated org members.
+ * Lightweight auth check — just ensures the user is authenticated.
+ * No permission check. Use for endpoints accessible by ALL authenticated org members.
  */
 export async function withUser(
   _req: NextRequest,
-  handler: (user: IUserDocument) => Promise<Response>
+  handler: (user: ClerkUser) => Promise<Response>
 ): Promise<Response> {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const { userId, orgId } = session;
 
     if (!userId) {
       return errorResponse("Unauthorized — please sign in", 401);
     }
 
-    const user = await resolveUser(userId);
-    if (!user) {
-      return errorResponse("User not found — please complete onboarding", 404);
-    }
-
-    return handler(user);
+    return handler({ userId, orgId: orgId ?? null });
   } catch (error) {
     console.error("[Auth Error]", error);
     return errorResponse("Internal server error", 500);
@@ -155,8 +139,5 @@ export async function withUser(
 }
 
 // ─── Legacy alias (kept for backward compat) ─────────────────
-// The old withAuth checked roles from DB. Kept as a thin shim
-// in case any routes still use it — it now calls withAnyPermission
-// but you should migrate routes to withPermission / withAnyPermission.
 /** @deprecated Use withPermission or withAnyPermission instead */
 export const withAuth = withAnyPermission;
